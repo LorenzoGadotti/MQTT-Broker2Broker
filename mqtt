@@ -1,56 +1,65 @@
-#Blibliotecas
-
-import random  #gerar ClientID aleatorio
-import json    #receber o JSON do dispositivo 
-from itsdangerous import json
-import csv
-from paho.mqtt import client as mqtt_client #funçoes mqtt
-from sqlalchemy import true
-
-
-
-#Connecta como subscriber 
-broker = 'mqtt.empresa.com'
-port = 1883
-topic = "topico"
-# gera um client ID com prefixo pub aleatoriamente
-client_id = f'python-mqtt-{random.randint(0, 100)}'
-username = 'nome'
-password = 'senha'
-
-
-def connect_mqtt() -> mqtt_client:
-    def on_connect(client, userdata, flags, rc):
-        if rc == 0:
-            print("Connected to MQTT Broker!")
-        else:
-            print("Failed to connect, return code %d\n", rc)
-
-    client = mqtt_client.Client(client_id)
-    client.username_pw_set(username, password)
-    client.on_connect = on_connect
-    client.connect(broker, port)
-    return client
-
-
-#coleta/print de dados
-def subscribe(client: mqtt_client):
-    def on_message(client, userdata, msg):
-        mensagem = json.loads(msg.payload)           #pega o payload e tranforma em JSON no console
-        if (mensagem[0]["bn"]=="dispositivo"):  #filtra o ID do device desejado
-            print (mensagem)    
-        
-    
-    client.subscribe(topic)
-    client.on_message = on_message
-
-
-def run():
-    client = connect_mqtt()
-    subscribe(client)
-    client.loop_forever()
-
-
-if __name__ == '__main__':
-    run()
-    
+const mqtt = require("mqtt");
+const clientId = `mqtt_${Math.random().toString(16).slice(3)}`;
+let scope, client;
+function connect_broker1() {
+    client = mqtt.connect('mqtt://mqtt.broker1.com:1883', {
+        clientId,
+        clean: true,
+        connectTimeout: 4000,
+        username: 'nome1',
+        password: 'senha1',
+        reconnectPeriod: 1000,
+    });
+    client.on('connect', function () {
+        client.subscribe("topico1");
+        console.log("Conectado ao broker1 ");
+    });
+}
+function connect_broker2() {
+    client = mqtt.connect('mqtt://mqtt.broker2.io:1883', {
+        clientId,
+        clean: true,
+        connectTimeout: 4000,
+        username: 'nome2',
+        password: 'senha2',
+        reconnectPeriod: 1000,
+    });
+    console.log("Conectado ao broker2");
+    /*
+    client.on('connect', () => {
+        console.log("Conectado ao broker2");
+    });
+    */
+}
+function send_froward(para_broker2) {
+    client.publish("topico2", JSON.stringify(para_broker2), { qos: 1, retain: false }, (error) => {
+        if (error) {
+            console.error(erro);
+        }
+        console.log("Data enviada ao broker");
+    });
+}
+function analise_dados(dados) {
+    if (dados) {
+        const filtro = dados.find(x => x.bn === "device");
+        if (filtro) {
+            console.log(dados);
+            connect_tago();
+            if (client.options.hostname === "mqtt.broker2.io") {
+                send_froward(dados);
+            }
+        }
+    }
+}
+function esperar_mensagem() {
+    connect_broker1();
+    client.on('message', function (topic, message) {
+        try {
+            scope = JSON.parse(message);
+        } catch (err) {
+            scope = [{ n: 'error', b: err }]
+        }
+        analise_dados(scope);
+    });
+}
+esperar_mensagem();
